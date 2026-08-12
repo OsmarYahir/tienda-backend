@@ -37,6 +37,23 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Redis: distributedcache:6379
     ports:
-      - "8081:8080"
+      - "18081:8080"
     depends_on:
       - distributedcache
+
+  order.api:
+    container_name: order.api
+    build:
+      context: .
+      dockerfile: Services/Order/Order.API/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # La cadena de conexión de MongoDB Atlas NUNCA se escribe aquí: se toma de una
+      # variable de entorno del host (definida en un .env local, fuera del control de versiones).
+      MongoDb__ConnectionString: ${MONGODB_CONNECTION_STRING}
+      MongoDb__DatabaseName: ${MONGODB_DATABASE_NAME-OrdersDb}
+      BasketApi__BaseUrl: http://basket.api:8080
+    ports:
+      - "8082:8080"
+    depends_on:
+      - basket.api

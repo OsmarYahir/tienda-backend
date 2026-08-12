@@ -1,5 +1,6 @@
+using BuildingBlocks.Behaviors;
+using BuildingBlocks.Exceptions.Handler;
 using Catalog.API.Behaviors;
-using Catalog.API.Exeptions;
 using JasperFx;
 using Marten;
 
@@ -13,6 +14,7 @@ builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
     cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+    cfg.AddOpenBehavior(typeof(CachingBehavior<,>));
 });
 
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);

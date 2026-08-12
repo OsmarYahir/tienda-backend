@@ -1,63 +1,49 @@
-﻿using FluentValidation;
+using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace BuildingBlocks.Exceptions.Handler
+namespace Order.API.Exceptions
 {
+    // Middleware de errores global: 400 para reglas de negocio/validación incumplidas,
+    // 404 para recursos inexistentes, 500 para todo lo demás SIN exponer stack trace
+    // ni el mensaje interno de la excepción no controlada (solo se loguea en servidor).
     public class CustomExceptionHandler(ILogger<CustomExceptionHandler> logger) : IExceptionHandler
     {
         public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
         {
-            logger.LogError(
-                "Error Message: {exceptioonMessage}, Time of ocurrence {time}",
-                exception.Message, DateTime.UtcNow);
+            logger.LogError(exception, "Excepción no controlada en {Path}", context.Request.Path);
 
             (string Detail, string Title, int StatusCode) details = exception switch
             {
-                InternalServerException =>
+                ValidationException validationEx =>
                 (
-                    exception.Message,
-                    exception.GetType().Name,
-                    context.Response.StatusCode = StatusCodes.Status500InternalServerError
-                ),
-                ValidationException =>
-                (
-                    exception.Message,
-                    exception.GetType().Name,
+                    string.Join(" ", validationEx.Errors.Select(e => e.ErrorMessage)),
+                    "ValidationException",
                     context.Response.StatusCode = StatusCodes.Status400BadRequest
                 ),
                 BadRequestException =>
                 (
                     exception.Message,
-                    exception.GetType().Name,
+                    nameof(BadRequestException),
                     context.Response.StatusCode = StatusCodes.Status400BadRequest
                 ),
                 NotFoundException =>
                 (
                     exception.Message,
-                    exception.GetType().Name,
+                    nameof(NotFoundException),
                     context.Response.StatusCode = StatusCodes.Status404NotFound
                 ),
-                // El binding automático del body (JSON mal formado, un valor que no calza con
-                // el tipo esperado, etc.) falla antes de llegar al endpoint/validador y ASP.NET
-                // Core lo envuelve en BadHttpRequestException. Sin este caso caía al "_" de abajo
-                // y una petición mal formada del cliente devolvía 500 en vez de 400.
+                // El binding automático del body (p. ej. un enum de OrderStatus con un valor
+                // de texto que no existe, o JSON mal formado) falla ANTES de llegar al
+                // endpoint/validador, y ASP.NET Core lo envuelve en BadHttpRequestException.
+                // Sin este caso, caía al "_" de abajo y devolvía 500 por una petición inválida.
                 BadHttpRequestException =>
                 (
                     "El cuerpo de la petición no es válido. Verifique el formato y los valores enviados.",
                     "BadRequestException",
                     context.Response.StatusCode = StatusCodes.Status400BadRequest
                 ),
-                // Excepciones no controladas: no se expone exception.Message ni stack trace al cliente.
-                // El detalle completo ya quedó registrado por el logger.LogError de arriba.
                 _ =>
                 (
                     "Ha ocurrido un error inesperado. Intente nuevamente más tarde.",
@@ -65,7 +51,6 @@ namespace BuildingBlocks.Exceptions.Handler
                     context.Response.StatusCode = StatusCodes.Status500InternalServerError
                 )
             };
-
 
             var problemDetails = new ProblemDetails
             {
@@ -75,18 +60,15 @@ namespace BuildingBlocks.Exceptions.Handler
                 Instance = context.Request.Path
             };
 
-
             problemDetails.Extensions.Add("traceId", context.TraceIdentifier);
 
             if (exception is ValidationException validationException)
             {
-                problemDetails.Extensions.Add("ValidatiionErrors", validationException.Errors);
+                problemDetails.Extensions.Add("validationErrors", validationException.Errors);
             }
 
             await context.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
             return true;
-
         }
-
     }
 }
