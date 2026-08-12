@@ -24,7 +24,14 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 // ---------------------------------------------------------------------------
 // 2) Cliente HTTP hacia Basket.API (para obtener el carrito al crear la orden)
 // ---------------------------------------------------------------------------
-var basketApiBaseUrl = builder.Configuration["BasketApi:BaseUrl"] ?? "http://localhost:5122";
+// appsettings.json trae "BasketApi:BaseUrl" = "" (a propósito, para no quemar una URL de
+// entorno ahí). Un simple "??" NO cubre ese caso: solo reemplaza null, y una cadena vacía
+// desde appsettings.json no es null, así que el fallback nunca se aplicaba y `new Uri("")`
+// tumbaba el servicio con UriFormatException en cuanto se resolvía IBasketClient.
+var basketApiBaseUrlConfig = builder.Configuration["BasketApi:BaseUrl"];
+var basketApiBaseUrl = string.IsNullOrWhiteSpace(basketApiBaseUrlConfig)
+    ? "http://localhost:5122"
+    : basketApiBaseUrlConfig;
 builder.Services.AddHttpClient<IBasketClient, BasketClient>(client =>
 {
     client.BaseAddress = new Uri(basketApiBaseUrl);
