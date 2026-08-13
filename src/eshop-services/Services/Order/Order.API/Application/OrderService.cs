@@ -90,6 +90,11 @@ namespace Order.API.Application
             return _repository.GetByCustomerIdAsync(customerId, cancellationToken);
         }
 
+        public Task<IReadOnlyList<Domain.Order>> GetAllAsync(CancellationToken cancellationToken = default)
+        {
+            return _repository.GetAllAsync(cancellationToken);
+        }
+
         public async Task<Domain.Order> UpdateStatusAsync(string id, OrderStatus newStatus, CancellationToken cancellationToken = default)
         {
             var order = await _repository.GetByIdAsync(id, cancellationToken)

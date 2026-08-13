@@ -3,6 +3,8 @@ version: '3.4'
 services:
   catalogdb:
     image: postgres:15
+  userdb:
+    image: postgres:15
   distributedcache:
     image: redis
 
@@ -24,5 +26,18 @@ services:
       context: .
       dockerfile: Services/Order/Order.API/Dockerfile
 
+  user.api:
+    image: ${DOCKER_REGISTRY-}userapi
+    build:
+      context: .
+      dockerfile: Services/User/User.API/Dockerfile
+
+  ticket.api:
+    image: ${DOCKER_REGISTRY-}ticketapi
+    build:
+      context: .
+      dockerfile: Services/Ticket/Ticket.API/Dockerfile
+
 volumes:
   postgres_catalog:
+  postgres_user:

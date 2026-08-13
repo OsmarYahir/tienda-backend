@@ -8,6 +8,8 @@ namespace Order.API.Infrastructure
 
         Task<IReadOnlyList<Domain.Order>> GetByCustomerIdAsync(string customerId, CancellationToken cancellationToken = default);
 
+        Task<IReadOnlyList<Domain.Order>> GetAllAsync(CancellationToken cancellationToken = default);
+
         Task<Domain.Order?> GetByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default);
 
         Task UpdateAsync(Domain.Order order, CancellationToken cancellationToken = default);

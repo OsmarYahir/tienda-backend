@@ -13,6 +13,10 @@ namespace Order.API.Application
 
         Task<IReadOnlyList<Domain.Order>> GetByCustomerIdAsync(string customerId, CancellationToken cancellationToken = default);
 
+        // Listado general — protegido con RequireRole("Admin") en el endpoint, no aquí:
+        // el servicio de aplicación no debería conocer de roles/HTTP.
+        Task<IReadOnlyList<Domain.Order>> GetAllAsync(CancellationToken cancellationToken = default);
+
         Task<Domain.Order> UpdateStatusAsync(string id, OrderStatus newStatus, CancellationToken cancellationToken = default);
     }
 }

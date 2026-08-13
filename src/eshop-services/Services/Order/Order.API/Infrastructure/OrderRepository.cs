@@ -31,6 +31,19 @@ namespace Order.API.Infrastructure
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<IReadOnlyList<Domain.Order>> GetAllAsync(CancellationToken cancellationToken = default)
+        {
+            // Sin paginación explícita porque no se pidió, pero un listado "de todas las
+            // órdenes" sin ningún límite es una mina de escalabilidad real (miles de
+            // documentos en un solo response). Se pone un tope defensivo; si el admin
+            // necesita más, el siguiente paso natural es agregar pageNumber/pageSize
+            // igual que en Catalog.API.
+            return await _orders.Find(FilterDefinition<Domain.Order>.Empty)
+                .SortByDescending(o => o.CreatedAt)
+                .Limit(500)
+                .ToListAsync(cancellationToken);
+        }
+
         public Task<Domain.Order?> GetByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken = default)
         {
             return _orders.Find(o => o.IdempotencyKey == idempotencyKey).FirstOrDefaultAsync(cancellationToken)!;

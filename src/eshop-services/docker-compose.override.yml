@@ -28,6 +28,19 @@ services:
     depends_on:
       - catalogdb
 
+  userdb:
+    container_name: userdb
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: UserDb
+    restart: always
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_user:/var/lib/postgresql/data/
+
   basket.api:
     container_name: basket.api
     build:
@@ -53,7 +66,44 @@ services:
       MongoDb__ConnectionString: ${MONGODB_CONNECTION_STRING}
       MongoDb__DatabaseName: ${MONGODB_DATABASE_NAME-OrdersDb}
       BasketApi__BaseUrl: http://basket.api:8080
+      # MISMA clave que user.api: Order.API valida tokens firmados por User.API, no los emite.
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      Jwt__Issuer: ${JWT_ISSUER-tienda-backend}
+      Jwt__Audience: ${JWT_AUDIENCE-tienda-frontend}
     ports:
       - "8082:8080"
     depends_on:
       - basket.api
+      - user.api
+
+  user.api:
+    container_name: user.api
+    build:
+      context: .
+      dockerfile: Services/User/User.API/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__UserDb: Host=userdb;Port=5432;Database=UserDb;Username=postgres;Password=postgres
+      # El secreto de firma JWT NUNCA se escribe aquí: viene de una variable de entorno
+      # del host (definida en un .env local, fuera del control de versiones), igual que
+      # MONGODB_CONNECTION_STRING para order.api.
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      Jwt__Issuer: ${JWT_ISSUER-tienda-backend}
+      Jwt__Audience: ${JWT_AUDIENCE-tienda-frontend}
+    ports:
+      - "8083:8080"
+    depends_on:
+      - userdb
+
+  ticket.api:
+    container_name: ticket.api
+    build:
+      context: .
+      dockerfile: Services/Ticket/Ticket.API/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      OrderApi__BaseUrl: http://order.api:8080
+    ports:
+      - "8084:8080"
+    depends_on:
+      - order.api

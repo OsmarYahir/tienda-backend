@@ -15,11 +15,22 @@ namespace Order.API.Endpoints
                 .WithName("CreateOrder")
                 .WithSummary("Crea una orden a partir de un carrito de compras")
                 .WithDescription("Recibe { customerId, basketId } y, opcionalmente, el header Idempotency-Key. " +
-                                  "Devuelve 201 si crea una orden nueva, o 200 si repite una Idempotency-Key ya procesada.")
+                                  "Devuelve 201 si crea una orden nueva, o 200 si repite una Idempotency-Key ya procesada. " +
+                                  "Requiere un Bearer token válido (emitido por User.API).")
+                .RequireAuthorization()
                 .Produces<OrderResponse>(StatusCodes.Status201Created)
                 .Produces<OrderResponse>(StatusCodes.Status200OK)
                 .ProducesValidationProblem()
-                .ProducesProblem(StatusCodes.Status400BadRequest);
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+            group.MapGet("/", GetAll)
+                .WithName("GetAllOrders")
+                .WithSummary("Lista todas las órdenes (solo Admin)")
+                .RequireAuthorization(policy => policy.RequireRole("Admin"))
+                .Produces<IReadOnlyList<OrderResponse>>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status403Forbidden);
 
             group.MapGet("/{id}", GetById)
                 .WithName("GetOrderById")
@@ -60,6 +71,13 @@ namespace Order.API.Endpoints
             return isNew
                 ? Results.Created($"/api/orders/{order.Id}", response)
                 : Results.Ok(response);
+        }
+
+        private static async Task<IResult> GetAll(
+            IOrderService orderService, CancellationToken cancellationToken)
+        {
+            var orders = await orderService.GetAllAsync(cancellationToken);
+            return Results.Ok(orders.Select(OrderResponse.FromDomain).ToList());
         }
 
         private static async Task<IResult> GetById(
