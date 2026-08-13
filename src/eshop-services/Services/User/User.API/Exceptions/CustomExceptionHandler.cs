@@ -40,6 +40,12 @@ namespace User.API.Exceptions
                     nameof(ConflictException),
                     context.Response.StatusCode = StatusCodes.Status409Conflict
                 ),
+                NotFoundException =>
+                (
+                    exception.Message,
+                    nameof(NotFoundException),
+                    context.Response.StatusCode = StatusCodes.Status404NotFound
+                ),
                 // El binding automático del body (JSON mal formado, un campo que no calza
                 // con el tipo esperado) falla antes de llegar al endpoint/validador y ASP.NET
                 // Core lo envuelve en BadHttpRequestException — sin este caso, una petición

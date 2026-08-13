@@ -1,5 +1,6 @@
 using Ticket.API.Application.Orders;
 using Ticket.API.Application.Pdf;
+using Ticket.API.Application.Users;
 
 namespace Ticket.API.Endpoints
 {
@@ -26,11 +27,19 @@ namespace Ticket.API.Endpoints
         private static async Task<IResult> GetTicketForOrder(
             string id,
             IOrderApiClient orderApiClient,
+            IUserApiClient userApiClient,
             ITicketPdfGenerator pdfGenerator,
             CancellationToken cancellationToken)
         {
             var order = await orderApiClient.GetOrderByIdAsync(id, cancellationToken);
-            var pdfBytes = pdfGenerator.Generate(order);
+
+            // Mejor esfuerzo: si User.API no responde o el usuario ya no existe, el ticket
+            // se genera igual mostrando el Id como respaldo, en vez de fallar la descarga
+            // completa por un problema de un servicio secundario.
+            var customer = await userApiClient.GetUserByIdAsync(order.CustomerId, cancellationToken);
+            var customerDisplayName = customer?.Email ?? order.CustomerId;
+
+            var pdfBytes = pdfGenerator.Generate(order, customerDisplayName);
 
             return Results.File(pdfBytes, "application/pdf", $"ticket-{order.Id}.pdf");
         }

@@ -1,6 +1,7 @@
 using QuestPDF.Infrastructure;
 using Ticket.API.Application.Orders;
 using Ticket.API.Application.Pdf;
+using Ticket.API.Application.Users;
 using Ticket.API.Endpoints;
 using Ticket.API.Exceptions;
 
@@ -26,6 +27,22 @@ var orderApiBaseUrl = string.IsNullOrWhiteSpace(orderApiBaseUrlConfig)
 builder.Services.AddHttpClient<IOrderApiClient, OrderApiClient>(client =>
 {
     client.BaseAddress = new Uri(orderApiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+})
+.AddHttpMessageHandler<AuthorizationPropagationHandler>();
+
+// ---------------------------------------------------------------------------
+// 1.1) Cliente HTTP hacia User.API, para resolver el email real del cliente y no
+//      mostrar su Guid en el ticket. UserApi:BaseUrl (env var: UserApi__BaseUrl)
+// ---------------------------------------------------------------------------
+var userApiBaseUrlConfig = builder.Configuration["UserApi:BaseUrl"];
+var userApiBaseUrl = string.IsNullOrWhiteSpace(userApiBaseUrlConfig)
+    ? "http://localhost:8083"
+    : userApiBaseUrlConfig;
+
+builder.Services.AddHttpClient<IUserApiClient, UserApiClient>(client =>
+{
+    client.BaseAddress = new Uri(userApiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(10);
 })
 .AddHttpMessageHandler<AuthorizationPropagationHandler>();

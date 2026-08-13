@@ -4,6 +4,6 @@ namespace Ticket.API.Application.Pdf
 {
     public interface ITicketPdfGenerator
     {
-        byte[] Generate(OrderDto order);
+        byte[] Generate(OrderDto order, string customerDisplayName);
     }
 }

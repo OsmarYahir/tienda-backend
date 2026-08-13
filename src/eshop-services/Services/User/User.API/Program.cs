@@ -1,5 +1,8 @@
+using System.Text;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using User.API.Application;
 using User.API.Application.Contracts;
 using User.API.Application.Security;
@@ -30,6 +33,42 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // ---------------------------------------------------------------------------
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
 builder.Services.AddSingleton<ITokenService, TokenService>();
+
+// User.API emite tokens (arriba) y ahora TAMBIÉN los valida: GET /api/users/{id} está
+// protegido con RequireAuthorization() (lo usa Ticket.API para resolver el email del
+// cliente). Misma configuración que Order.API, incluido MapInboundClaims = false — sin
+// eso, RoleClaimType/RequireRole quedan apuntando a un claim que ya no existe después
+// del remapeo por defecto de JwtSecurityTokenHandler (bug real que ya encontramos ahí).
+var jwtSettingsForAuth = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>() ?? new JwtSettings();
+if (string.IsNullOrWhiteSpace(jwtSettingsForAuth.SecretKey))
+    throw new InvalidOperationException(
+        "JWT no está configurado. Define las variables de entorno 'Jwt__SecretKey', 'Jwt__Issuer' y 'Jwt__Audience'.");
+
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettingsForAuth.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtSettingsForAuth.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettingsForAuth.SecretKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            RoleClaimType = "role",
+            NameClaimType = "email"
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 // ---------------------------------------------------------------------------
 // 3) Validación (FluentValidation)
@@ -100,7 +139,11 @@ if (app.Environment.IsDevelopment())
 app.UseCors(CorsPolicyName);
 app.UseExceptionHandler();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapAuthEndpoints();
+app.MapUserEndpoints();
 app.MapHealthChecks("/health");
 
 app.Run();

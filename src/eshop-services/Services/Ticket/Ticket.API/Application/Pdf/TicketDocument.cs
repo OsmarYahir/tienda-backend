@@ -10,7 +10,7 @@ namespace Ticket.API.Application.Pdf
     // orden, tabla de productos y totales. No hay un archivo de imagen real para el logo
     // (este proyecto no trae assets binarios) — se dibuja como una caja de color con texto,
     // que es trivial de reemplazar por `image.Image(logoBytes)` si se agrega un logo real.
-    public class TicketDocument(OrderDto order) : IDocument
+    public class TicketDocument(OrderDto order, string customerDisplayName) : IDocument
     {
         private static readonly CultureInfo Currency = CultureInfo.GetCultureInfo("es-MX");
 
@@ -77,7 +77,9 @@ namespace Ticket.API.Application.Pdf
                     col.Item().Text(t =>
                     {
                         t.Span("Cliente: ").SemiBold();
-                        t.Span(order.CustomerId);
+                        // Email real resuelto vía User.API, no el Guid de CustomerId — un
+                        // cliente viendo su propio recibo no tiene por qué entender un Id.
+                        t.Span(customerDisplayName);
                     });
                 });
 

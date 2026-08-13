@@ -103,7 +103,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       OrderApi__BaseUrl: http://order.api:8080
+      UserApi__BaseUrl: http://user.api:8080
     ports:
       - "8084:8080"
     depends_on:
       - order.api
+      - user.api

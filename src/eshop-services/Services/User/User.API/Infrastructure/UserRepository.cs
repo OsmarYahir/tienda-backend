@@ -10,6 +10,11 @@ namespace User.API.Infrastructure
             return context.Users.FirstOrDefaultAsync(u => u.Email == normalized, cancellationToken);
         }
 
+        public Task<Domain.User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return context.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        }
+
         public async Task AddAsync(Domain.User user, CancellationToken cancellationToken = default)
         {
             context.Users.Add(user);
